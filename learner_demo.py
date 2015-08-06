@@ -50,25 +50,3 @@ active_learner.rebuild_models(undersample_first=True)
 active_learner.unlabeled_datasets.add_data(data2.data)
 
 active_learner.active_learn(10, num_to_label_at_each_iteration=2)
-#active_learner.rebuild_models(undersample_first=True)
-
-
-# active_learner.unlabeled_datasets.add_data(data3.data)
-
-# point_sets = [active_learner.unlabeled_datasets.get_samples().values]
-
-# true_labels = active_learner.unlabeled_datasets.get_labels().values
-    # loop over all of the examples, and feed to the "cautious_classify" method 
-    # the corresponding point in each feature-space
-# predictions = []
-# for example_index in range(len(point_sets[0])):
-#     prediction = active_learner.cautious_predict([point_sets[feature_space_index][example_index] for feature_space_index in range(len(point_sets))])
-#     predictions.append(prediction)
-# print predictions
-
-# predictions = []
-# for example_index in range(len(point_sets[0])):
-#     prediction = active_learner.models[0].predict_probability(point_sets[0][example_index])
-#     predictions.append(prediction)
-
-# print predictions
