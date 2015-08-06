@@ -1,3 +1,17 @@
+'''
+###############################################
+
+    machine_learning.py
+    Paul Soto 
+    Universitat Pompeu Fabra
+        
+    This module implements Naive Bayes classification
+    and dataset formatting for other machine learning 
+    algorithms. 
+
+###############################################
+'''
+
 import random
 import math
 import numpy as np
