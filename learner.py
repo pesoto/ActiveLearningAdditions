@@ -52,7 +52,16 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
     # loop over all of the examples, and feed to the "cautious_classify" method 
     # the corresponding point in each feature-space
     predictions = []
-    if learner.models[0].probability:
+    if learner.nbc:
+        ml_class = machine_learning.NaiveBayes(learner.labeled_datasets.data,1,learner.labeled_datasets.classLabel)
+        ml_class.testing = learner.test_datasets.data.drop(learner.test_datasets.origText,1)
+        ml_class.predictProbabilities('Gaussian')
+        ml_class.getPredictions()
+        predictions = ml_class.bestLabel
+        probs = ml_class.testingProbs
+        scores = 'The training is done using Naive Bayes'
+
+    elif learner.models[0].probability:
         probs = []
         for example_index in range(len(point_sets[0])):
             prediction = learner.models[0].predict_probability(point_sets[0][example_index])
@@ -110,7 +119,7 @@ def get_model_params(model):
     
 class learner:
 
-    def __init__(self, unlabeled_datasets = pd.DataFrame(), test_datasets = pd.DataFrame(),models=None,probability = 0):
+    def __init__(self, unlabeled_datasets = pd.DataFrame(), test_datasets = pd.DataFrame(),models=None,probability = 0,NBC=False):
         # just using default parameter for now
         self.params = svm_parameter(weight=[1, 1000],probability=probability)
         self.unlabeled_datasets = unlabeled_datasets
@@ -119,6 +128,7 @@ class learner:
         self.labeled_datasets = machine_learning.ActiveLearningDataset(pd.DataFrame(columns=unlabeled_datasets.data.columns))
         self.models = models
         self.test_results = []
+        self.nbc = NBC
 
     def active_learn(self, num_examples_to_label, query_function = None, num_to_label_at_each_iteration=10, rebuild_models_at_each_iter=True):
         ''''

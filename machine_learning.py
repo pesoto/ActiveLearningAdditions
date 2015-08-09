@@ -207,10 +207,10 @@ class PassiveLearningDataset():
 		self.priors = self.training[self.classLabel].value_counts(True)
 
 
-class NaiveBayes(ActiveLearningDataset):
+class NaiveBayes(PassiveLearningDataset):
 
 	def __init__(self,dataframe,splitRatio,classLabel="classLabel"):
-		ActiveLearningDataset.__init__(self,dataframe,splitRatio,classLabel)
+		PassiveLearningDataset.__init__(self,dataframe,splitRatio,classLabel)
 
 		#Generate dataframe of parameters for likelihood
 		self.params = self.trainingMeans.copy()

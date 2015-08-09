@@ -42,7 +42,7 @@ data1 = machine_learning.ActiveLearningDataset(labeled_data,classLabel="classLab
 data2 = machine_learning.ActiveLearningDataset(unlabeled_data,classLabel="classLabel",origText="origText")
 data3 = machine_learning.ActiveLearningDataset(test_data,classLabel="classLabel",origText="origText")
 
-active_learner = learner.learner(data1,test_datasets=data3,probability=0)
+active_learner = learner.learner(data1,test_datasets=data3,probability=0,NBC=True)
 length = len(data1.data)
 active_learner.pick_initial_training_set(length)
 active_learner.rebuild_models(undersample_first=True)
