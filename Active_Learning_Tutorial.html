@@ -408,7 +408,8 @@ to classify nonlabeled points which best halve the version space.</p>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Next, initiate the learner object which will execute the active learning and estimate the parameters of the support vector machine.</p>
-<p>NOTE: In this demo, we are using the decision values to estimate the class for the out of sample data and are not estimating posterior probabilities for each class. If you'd like to use them, keep in mind the estimation takes much longer to build the models. Furthermore, accuracy will require more training data.</p>
+<p>The learner uses Support Vector Machines to find the most 'informative' unlabeled observations to train. The training, however, does not need to use SVMs. Instead, we can obtain our accuracy by using another classifier, such as the 
+NOTE: In this demo, we are using the decision values to estimate the class for the out of sample data and are not estimating posterior probabilities for each class. If you'd like to use them, keep in mind the estimation takes much longer to build the models. Furthermore, accuracy will require more training data.</p>
 
 </div>
 </div>
@@ -418,7 +419,7 @@ to classify nonlabeled points which best halve the version space.</p>
 <div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython2"><pre><span class="n">active_learner</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">learner</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span><span class="n">test_datasets</span><span class="o">=</span><span class="n">data3</span><span class="p">,</span><span class="n">probability</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<div class=" highlight hl-ipython2"><pre><span class="n">active_learner</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">learner</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span><span class="n">test_datasets</span><span class="o">=</span><span class="n">data3</span><span class="p">,</span><span class="n">probability</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">NBC</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="n">active_learner</span><span class="o">.</span><span class="n">pick_initial_training_set</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
 <span class="n">active_learner</span><span class="o">.</span><span class="n">rebuild_models</span><span class="p">(</span><span class="n">undersample_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>

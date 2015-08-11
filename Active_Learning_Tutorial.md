@@ -95,10 +95,11 @@ Now, we will initiate the ActiveLearningDataset object, which facilitates adding
 
 Next, initiate the learner object which will execute the active learning and estimate the parameters of the support vector machine. 
 
+The learner uses Support Vector Machines to find the most 'informative' unlabeled observations to train. The training, however, does not need to use SVMs. Instead, we can obtain our accuracy by using another classifier, such as the 
 NOTE: In this demo, we are using the decision values to estimate the class for the out of sample data and are not estimating posterior probabilities for each class. If you'd like to use them, keep in mind the estimation takes much longer to build the models. Furthermore, accuracy will require more training data. 
 
 
-    active_learner = learner.learner(data1,test_datasets=data3,probability=0)
+    active_learner = learner.learner(data1,test_datasets=data3,probability=0,NBC=True)
     length = len(data1.data)
     active_learner.pick_initial_training_set(length)
     active_learner.rebuild_models(undersample_first=True)
