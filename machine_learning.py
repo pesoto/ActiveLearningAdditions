@@ -5,9 +5,9 @@
     Paul Soto 
     Universitat Pompeu Fabra
         
-    This module implements Naive Bayes classification
-    and dataset formatting for other machine learning 
-    algorithms. 
+    This module implements Naive Bayes and KNN classification
+    and also contains dataset formatting for other machine learning 
+    algorithms, such as Active Learning. 
 
 ###############################################
 '''
@@ -29,11 +29,12 @@ class TextDoc():
 	are given
 	"""
 	def __init__(self,dataframe,stopword_remove=0):
-		docsobj = topicmodels.RawDocs(dataframe.text, "stopwords.txt")
+		docsobj = topicmodels.RawDocs(dataframe.text, "long")
 		docsobj.token_clean(1)
 		docsobj.stopword_remove("tokens")
 		docsobj.stem()
-		docsobj.tf_idf("stems")
+		docsobj.stopword_remove("stems")
+		docsobj.term_rank("stems")
 		if stopword_remove>0:
 			docsobj.stopword_remove("stems",stopword_remove)
 		dataframe = dataframe.drop('text',1)
@@ -317,3 +318,52 @@ class NaiveBayes(PassiveLearningDataset):
 		"""
 		correct = (self.testing[self.classLabel]==self.bestLabel).sum()
 		self.accuracy = (correct/float(len(self.testing))) * 100.0
+
+class KNN():
+	"""
+	Compute the K nearest neighbors and predict based off of majority class in
+	neighborhood
+	"""
+	def __init__(self,dataframe,classLabel = 'classLabel'):
+		self.data = dataframe.drop(classLabel,1)
+		self.labels = dataframe.classLabel
+	
+	def cosineKNN(self,K):
+		"""
+		First computes cosineSimilarity = AxB/mag(A)mag(B)
+		Then outputs the K nearest neighbors
+		"""
+		def return_top_n(series):
+			indices = series.index.values
+			ranks = series.rank(method='min')
+			top_n_index = []
+			for el in range(len(indices)-K,len(indices)):
+				top_n_index = list(ranks[ranks==el].index)+top_n_index
+			return top_n_index
+
+		similarity = np.dot(self.data, self.data.T)
+
+		# squared magnitude of preference vectors (number of occurrences)
+		square_mag = np.diag(similarity)
+
+		# inverse squared magnitude
+		inv_square_mag = 1 / square_mag
+
+		# if it doesn't occur, set it's inverse magnitude to zero (instead of inf)
+		inv_square_mag[np.isinf(inv_square_mag)] = 0
+
+		# inverse of the magnitude
+		inv_mag = np.sqrt(inv_square_mag)
+
+		# cosine similarity (elementwise multiply by inverse magnitudes)
+		cosine = similarity * inv_mag
+		cosine = cosine.T * inv_mag
+
+		self.cosineSimilarity = pd.DataFrame(cosine,index=self.data.index,columns=self.data.index)
+		self.top_k = self.cosineSimilarity.apply(return_top_n)
+		self.probs = self.top_k.apply(lambda x: self.labels.loc[x].value_counts(True))
+		self.bestLabel = self.probs.apply(lambda x: x.argmax(),1)
+
+
+
+
