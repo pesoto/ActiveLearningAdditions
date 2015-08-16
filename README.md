@@ -6,11 +6,15 @@ with the SIMPLE querying function of Tong & Koller (2001). The code
 was adjusted to for querying where the user is asked
 to classify nonlabeled points which best halve the version space. 
 
-1. Download Byron's code, forked at my repository with my additions, https://github.com/pesoto/libsvm288fork.git
+1. Download Byron's code, https://github.com/pesoto/curious_snake
 
 2. Extract files to some folder on your local drive
 
-3. CD into libsvm288fork-master and type "make" to build module
+3. CD into .../libsvm/python/ and type 'make' to build the module (or 'python setup.py install')
+
+4. Download my additions, along with the movie review data for the demo below, https://github.com/pesoto/ActiveLearningAdditions
+
+5. Export this folder into the folder you would like to work in
 
 Note, this module requires Stephen Hansen's Topic Modelling module available at https://github.com/sekhansen/text-mining-tutorial
 
@@ -91,10 +95,11 @@ Now, we will initiate the ActiveLearningDataset object, which facilitates adding
 
 Next, initiate the learner object which will execute the active learning and estimate the parameters of the support vector machine. 
 
+The learner uses Support Vector Machines to find the most 'informative' unlabeled observations to train. The training, however, does not need to use SVMs. Instead, we can obtain our accuracy by using another classifier, such as the 
 NOTE: In this demo, we are using the decision values to estimate the class for the out of sample data and are not estimating posterior probabilities for each class. If you'd like to use them, keep in mind the estimation takes much longer to build the models. Furthermore, accuracy will require more training data. 
 
 
-    active_learner = learner.learner(data1,test_datasets=data3,probability=0)
+    active_learner = learner.learner(data1,test_datasets=data3,probability=0,NBC=True)
     length = len(data1.data)
     active_learner.pick_initial_training_set(length)
     active_learner.rebuild_models(undersample_first=True)
