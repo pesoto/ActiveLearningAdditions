@@ -165,11 +165,12 @@ class learner:
             valid = False
             while not valid:
                 try:
-                    print to_label.loc[instance].origText
-                    var = raw_input("Please enter label for the above point: \n"+
-                            'Please choose from '+str(self.models[0].labels) + "\nLabel: ")
-                    if eval(var) in self.models[0].labels:
-                        to_label.loc[instance,self.unlabeled_datasets.classLabel] = eval(var)
+                    # print to_label.loc[instance].origText
+                    # var = raw_input("Please enter label for the above point: \n"+
+                    #         'Please choose from '+str(self.models[0].labels) + "\nLabel: ")
+                    var = to_label.loc[instance][self.labeled_datasets.classLabel]
+                    if (var) in self.models[0].labels:
+                        to_label.loc[instance,self.unlabeled_datasets.classLabel] = (var)
                         valid = True
                     else:
                         print 'Please choose from '+str(self.models[0].labels)

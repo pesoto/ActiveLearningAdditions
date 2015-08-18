@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import topicmodels
 import collections
+from itertools import chain
 
 def tfidf(bagofwords):
 		idf = bagofwords.apply(lambda x: np.log(x.count()/float(1+(x>0).sum())))
@@ -43,15 +44,24 @@ class TextDoc():
 		all_stems = [s for d in docsobj.stems for s in d]
 		self.stems = set(all_stems)
 
-	def gen_bag_of_words_df(self):
+	def gen_bag_of_words_df(self,bigram=False):
 		"""
 		Create a matrix of Document - WordVector elements
 		Each column will be a different word from the entire document corpus
 		Elements will consist of the word-count for that document
 		"""
+		if bigram:
+			bigrams =self.dataframe.text.apply(lambda x: [x+' '+y for x,y in zip(x.split(),x.split()[1:])])
+			self.bigrams = set(chain.from_iterable(bigrams))
 		def word_vector(doc_text):
-			freqs = pd.Series(collections.Counter(doc_text.split()))
-			return freqs.loc[set(freqs.index.values)|set(self.stems)]
+			if bigram:
+				words = doc_text.split()
+				bigrams = [x+' '+y for x,y in zip(words,words[1:])]
+				freqs = pd.Series(collections.Counter(bigrams))
+				return freqs.loc[set(freqs.index.values)|self.bigrams]
+			else:
+				freqs = pd.Series(collections.Counter(doc_text.split()))
+				return freqs.loc[set(freqs.index.values)|set(self.stems)]
 		self.bagofwords = self.dataframe.text.apply(word_vector).replace({np.nan:0})
 
 	def tfidf(self):
@@ -319,15 +329,17 @@ class NaiveBayes(PassiveLearningDataset):
 		correct = (self.testing[self.classLabel]==self.bestLabel).sum()
 		self.accuracy = (correct/float(len(self.testing))) * 100.0
 
-class KNN():
+class KNN(PassiveLearningDataset):
 	"""
 	Compute the K nearest neighbors and predict based off of majority class in
 	neighborhood
 	"""
-	def __init__(self,dataframe,classLabel = 'classLabel'):
-		self.data = dataframe.drop(classLabel,1)
-		self.labels = dataframe.classLabel
-	
+	def __init__(self,dataframe,splitRatio,classLabel="classLabel"):
+		PassiveLearningDataset.__init__(self,dataframe,splitRatio,classLabel)
+		self.labels  = self.data[classLabel]
+		self.data = self.data.drop(classLabel,1)
+		self.training = self.training.drop(classLabel,1)
+		self.testing = self.testing.drop(classLabel,1)
 	def cosineKNN(self,K):
 		"""
 		First computes cosineSimilarity = AxB/mag(A)mag(B)
@@ -360,10 +372,9 @@ class KNN():
 		cosine = cosine.T * inv_mag
 
 		self.cosineSimilarity = pd.DataFrame(cosine,index=self.data.index,columns=self.data.index)
-		self.top_k = self.cosineSimilarity.apply(return_top_n)
+		self.cosineSimilarity = self.cosineSimilarity.loc[self.testing.index][self.training.index]
+		self.top_k = self.cosineSimilarity.apply(return_top_n,1)
 		self.probs = self.top_k.apply(lambda x: self.labels.loc[x].value_counts(True))
 		self.bestLabel = self.probs.apply(lambda x: x.argmax(),1)
-
-
-
-
+		correct = (self.labels.loc[self.testing.index]==self.bestLabel).sum()
+		self.accuracy = (correct/float(len(self.testing))) * 100.0
