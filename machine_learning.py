@@ -24,12 +24,17 @@ def tfidf(bagofwords):
 		idf = bagofwords.apply(lambda x: np.log(x.count()/float(1+(x>0).sum())))
 		return bagofwords.apply(lambda x: np.log(1+x)/float(idf[x.name]))
 
+def find_ngrams(input_list, n):
+  ngrams = zip(*[input_list[i:] for i in range(n)])
+  return [' '.join(el) for el in ngrams]
+
 class TextDoc():
 	"""
 	Extract features from a text dataset where only the text and class label 
 	are given
 	"""
-	def __init__(self,dataframe,stopword_remove=0):
+
+	def __init__(self,dataframe,stopword_remove=0, ngram=1):
 		docsobj = topicmodels.RawDocs(dataframe.text, "long")
 		docsobj.token_clean(1)
 		docsobj.stopword_remove("tokens")
@@ -42,26 +47,20 @@ class TextDoc():
 		dataframe['text'] = [' '.join(s) for s in docsobj.stems]
 		self.dataframe = dataframe
 		all_stems = [s for d in docsobj.stems for s in d]
-		self.stems = set(all_stems)
+		self.stems = set(find_ngrams(all_stems,ngram))
+		self.ngram = ngram
 
-	def gen_bag_of_words_df(self,bigram=False):
+	def gen_bag_of_words_df(self):
 		"""
 		Create a matrix of Document - WordVector elements
 		Each column will be a different word from the entire document corpus
 		Elements will consist of the word-count for that document
 		"""
-		if bigram:
-			bigrams =self.dataframe.text.apply(lambda x: [x+' '+y for x,y in zip(x.split(),x.split()[1:])])
-			self.bigrams = set(chain.from_iterable(bigrams))
 		def word_vector(doc_text):
-			if bigram:
-				words = doc_text.split()
-				bigrams = [x+' '+y for x,y in zip(words,words[1:])]
-				freqs = pd.Series(collections.Counter(bigrams))
-				return freqs.loc[set(freqs.index.values)|self.bigrams]
-			else:
-				freqs = pd.Series(collections.Counter(doc_text.split()))
-				return freqs.loc[set(freqs.index.values)|set(self.stems)]
+			words = doc_text.split()
+			ngrams = find_ngrams(words,self.ngram)
+			freqs = pd.Series(collections.Counter(ngrams))
+			return freqs.loc[set(freqs.index.values)|self.stems]
 		self.bagofwords = self.dataframe.text.apply(word_vector).replace({np.nan:0})
 
 	def tfidf(self):
@@ -329,6 +328,44 @@ class NaiveBayes(PassiveLearningDataset):
 		correct = (self.testing[self.classLabel]==self.bestLabel).sum()
 		self.accuracy = (correct/float(len(self.testing))) * 100.0
 
+	def most_informative_features(self, k=10,ignore_inf = True):
+		data = self.training.copy()
+		data[data>0]=1
+		#Separate Training data by class
+		separated = data.groupby(self.classLabel)
+
+		#Compute first and second moments per class label for Training Data
+		trainingMeans = separated.mean()
+
+		#Compute relative probabilities
+		classes = trainingMeans.index.values
+
+		if ignore_inf:
+			repl_inf = 0
+		else:
+			repl_inf = 9999
+
+		probs1=trainingMeans.apply(lambda x: x[classes[0]]/x[classes[1]],0).replace(np.inf,repl_inf)
+		probs2=trainingMeans.apply(lambda x: x[classes[1]]/x[classes[0]],0).replace(np.inf,repl_inf)
+
+		all_probs = pd.DataFrame([probs1,probs2])
+
+		maxVals = all_probs.max(0)
+		maxVals.sort(ascending=False)
+		maxClass = all_probs.idxmax(0)
+		minClass = all_probs.idxmin(0)
+
+		print "%s Most Informative Features" % k
+		for each in range(k):
+			word = maxVals.index[each]
+			maxVal = maxVals[each]
+			if maxVal == 9999:
+				maxVal = 'INF'
+			value = "%s : 1 " % round(maxVal,2)
+			classRatio = "%s : %s" % (maxClass[word],minClass[word])
+			print ('Contains %s likelihood %s for %s' % (word,value,classRatio))
+		return all_probs
+
 class KNN(PassiveLearningDataset):
 	"""
 	Compute the K nearest neighbors and predict based off of majority class in
@@ -349,7 +386,7 @@ class KNN(PassiveLearningDataset):
 			indices = series.index.values
 			ranks = series.rank(method='min')
 			top_n_index = []
-			for el in range(len(indices)-K,len(indices)):
+			for el in range(len(indices)-K+1,len(indices)+1):
 				top_n_index = list(ranks[ranks==el].index)+top_n_index
 			return top_n_index
 
