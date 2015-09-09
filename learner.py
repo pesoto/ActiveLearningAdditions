@@ -40,8 +40,8 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
     
     results["npos"] = tps
     
-    print "positives found during learning: %s\nnegatives found during learning: %s" % (tps, tns)
-    print "evaluating learner over %s instances." % learner.test_datasets.data.shape[0]
+    #print "positives found during learning: %s\nnegatives found during learning: %s" % (tps, tns)
+    #print "evaluating learner over %s instances." % learner.test_datasets.data.shape[0]
     fps, fns = 0, 0
     # get the raw points out for prediction
     point_sets = [learner.test_datasets.get_samples().values]
