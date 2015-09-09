@@ -165,12 +165,12 @@ class learner:
             valid = False
             while not valid:
                 try:
-                    # print to_label.loc[instance].origText
-                    # var = raw_input("Please enter label for the above point: \n"+
-                    #         'Please choose from '+str(self.models[0].labels) + "\nLabel: ")
-                    var = to_label.loc[instance][self.labeled_datasets.classLabel]
-                    if (var) in self.models[0].labels:
-                        to_label.loc[instance,self.unlabeled_datasets.classLabel] = (var)
+                    print to_label.loc[instance].origText
+                    var = raw_input("Please enter label for the above point: \n"+
+                             'Please choose from '+str(self.models[0].labels) + "\nLabel: ")
+                    #var = to_label.loc[instance][self.labeled_datasets.classLabel]
+                    if eval(var) in self.models[0].labels:
+                        to_label.loc[instance,self.unlabeled_datasets.classLabel] = eval(var)
                         valid = True
                     else:
                         print 'Please choose from '+str(self.models[0].labels)
@@ -329,7 +329,7 @@ class learner:
         self.models = []
         problem = svm_problem(dataset.get_labels().values, dataset.get_samples().values)
         # find C, gamma parameters for each model
-        print "finding optimal C, gamma parameters..."
+        #print "finding optimal C, gamma parameters..."
         self.params.C, self.params.gamma = grid_search(problem, self.params)
         print "C:%s; gamma:%s" % (self.params.C, self.params.gamma)
         self.models.append(svm_model(problem, self.params))

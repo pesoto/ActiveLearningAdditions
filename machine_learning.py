@@ -201,8 +201,8 @@ class PassiveLearningDataset():
 		#Split data into training and testing dataframes
 		temp = self.data.loc[np.random.permutation(self.data.index)] 
 		splitIndex = int(self.data.shape[0]*self.splitRatio)
-		print('Split {0} rows into train={1} and test={2} rows').format(len(self.data),
-									 splitIndex, len(self.data)-splitIndex)
+		# print('Split {0} rows into train={1} and test={2} rows').format(len(self.data),
+		# 							 splitIndex, len(self.data)-splitIndex)
 		self.training = temp[0:splitIndex]
 		self.testing = temp[splitIndex::]
 
