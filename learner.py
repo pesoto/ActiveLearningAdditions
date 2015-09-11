@@ -22,6 +22,7 @@ import machine_learning
 import pandas as pd 
 import svmc
 import numpy as np
+import os
 
 def evaluate_learner(learner, include_labeled_data_in_metrics=True):
     '''
@@ -75,6 +76,8 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
             predictions.append(prediction)
             score = learner.models[0].predict_values(point_sets[0][example_index])
             scores.append(score)
+        scores = pd.DataFrame(index=learner.test_datasets.data.index,data=scores)
+        scores.columns = [0,1]
         probs = "This is not a probability model"
 
     conf_mat =  svm.evaluate_predictions(predictions, true_labels)
@@ -119,7 +122,7 @@ def get_model_params(model):
     
 class learner:
 
-    def __init__(self, unlabeled_datasets = pd.DataFrame(), test_datasets = pd.DataFrame(),models=None,probability = 0,NBC=False):
+    def __init__(self, unlabeled_datasets = pd.DataFrame(), test_datasets = pd.DataFrame(),models=[],probability = 0,NBC=False,className='Class'):
         # just using default parameter for now
         self.params = svm_parameter(weight=[1, 1000],probability=probability)
         self.unlabeled_datasets = unlabeled_datasets
@@ -129,8 +132,9 @@ class learner:
         self.models = models
         self.test_results = []
         self.nbc = NBC
+        self.className = className
 
-    def active_learn(self, num_examples_to_label, query_function = None, num_to_label_at_each_iteration=10, rebuild_models_at_each_iter=True):
+    def active_learn(self, num_examples_to_label, query_function = None, num_to_label_at_each_iteration=10, rebuild_models_at_each_iter=True,undersample_first =False):
         ''''
         Active learning loop. Uses the provided query function (query_function) to select a number of examples 
         (num_to_label_at_each_iteration) to label at each step, until the total number of examples requested 
@@ -146,11 +150,11 @@ class learner:
             # now remove the selected examples from the unlabeled sets and put them in the labeled sets.
             self.label_instances_in_all_datasets(example_ids_to_label)
             if rebuild_models_at_each_iter:
-                self.rebuild_models()
+                self.rebuild_models(undersample_first)
                 print "models rebuilt with %s labeled examples" % self.labeled_datasets.data.shape[0]
             labeled_so_far += num_to_label_at_each_iteration
         if not rebuild_models_at_each_iter:
-            self.rebuild_models()
+            self.rebuild_models(undersample_first)
         print "active learning loop completed; models rebuilt."
 
     def label_instances_in_all_datasets(self, inst_ids):
@@ -167,7 +171,10 @@ class learner:
                 try:
                     print to_label.loc[instance].origText
                     var = raw_input("Please enter label for the above point: \n"+
-                             'Please choose from '+str(self.models[0].labels) + "\nLabel: ")
+                             "Please choose from "+str(self.models[0].labels)+" \n"+
+                             "1 if class "+ self.className+"\n"+
+                             "0 if not class "+ self.className+"\n"+
+                             "Label: " )
                     #var = to_label.loc[instance][self.labeled_datasets.classLabel]
                     if eval(var) in self.models[0].labels:
                         to_label.loc[instance,self.unlabeled_datasets.classLabel] = eval(var)
@@ -197,7 +204,7 @@ class learner:
         if build_models:
             print "building models..."
             self.rebuild_models()
-            print "done."
+            #print "done."
 
     def undersample_labeled_datasets(self, k=None):
         '''
@@ -205,7 +212,7 @@ class learner:
         '''
         if self.labeled_datasets.data.shape[0]>0:
             if not k:
-                print "undersampling majority class to equal that of the minority examples"
+                #print "undersampling majority class to equal that of the minority examples"
                 k = self.labeled_datasets.number_of_majority_examples() - self.labeled_datasets.number_of_minority_examples()
             # we copy the datasets rather than mutate the class members.
             copied_dataset = machine_learning.ActiveLearningDataset(self.labeled_datasets.copy())
@@ -252,7 +259,7 @@ class learner:
             self.label_instances_in_all_datasets([most_diverse_id])
         print "building models..."
         self.rebuild_models()
-        print "done."
+        #print "done."
         
         
     def label_at_random(self, k):
@@ -335,3 +342,55 @@ class learner:
         self.models.append(svm_model(problem, self.params))
         self.test_results = evaluate_learner(self,include_labeled_data_in_metrics=False)
         print "done."      
+
+    def save(self):
+        self.models[0].save('%s_learner' % self.className)
+        self.labeled_datasets.data.to_csv('%s_learner.csv' % self.className)
+        text = {}
+
+        #Convert dfs to dictionaries for saving
+        for el in self.test_results.keys():
+            try:
+                text[el] = self.test_results[el].to_dict()
+            except:
+                text[el] = self.test_results[el]
+
+        #Save if Naive Bayes was used
+        text['NBC']=self.nbc
+
+        #Save info as text file
+        text_file = open('%s_learner.txt'  % self.className, "w")
+        text_file.write(str(text))
+        text_file.close()
+
+    def load(self):
+        #Check to see if learner already exists
+        if '%s_learner'% self.className not in os.listdir('.'):
+            print 'Note: %s learner does not exist yet' % self.className
+            return 
+        else:
+            print '%s_learner' % self.className
+            #Update the model
+            self.models.append(svm.svm_model('%s_learner' % self.className))
+
+            #Update the labeled data
+            temp = pd.read_csv('%s_learner.csv' % self.className)
+            temp.rename(columns={temp.columns[0]:'index'},inplace=True)
+            temp.set_index('index',inplace=True)
+            text_file = open('%s_learner.txt' % self.className, "r")
+
+            #Print most recent accuracy
+            details = eval(text_file.read())
+            print 'Last accuracy: %s' % details['confusion_matrix']
+            self.nbc = details['NBC']
+
+            #Convert everything back to a dataframe
+            for el in details.keys():
+                try:
+                    details[el] = pd.DataFrame(details[el])
+                except:
+                    continue
+
+            #Update most recent test results
+            self.test_results = details
+            self.unlabeled_datasets.data = pd.concat([temp.ix[[el for el in temp.index if el not in self.unlabeled_datasets.data.index]],self.unlabeled_datasets.data])
