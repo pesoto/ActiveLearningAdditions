@@ -1,7 +1,6 @@
 import pandas as pd
 import machine_learning
 import numpy as np
-import matplotlib.pyplot as plt
 import learner
 
 ################################
@@ -13,14 +12,14 @@ classDefinitions = {0:'No Class',1:'Forward Guidance',2:'Current Economic Situat
 
 #Training Data
 labeledData = pd.read_csv('data_labeled.csv')
-
+labeledData['classLabel'].replace({0:0,2:0,3:0},inplace=True)
 #Unlabeled Data (here we 'pretend' we don't know the true label by overwriting their actual labels)
 unlabeledData = pd.read_csv('data_unlabeled.csv')
 unlabeledData['classLabel'] = unlabeledData['classLabel'].apply(lambda x: np.nan)
 
 #Test Dataset for accuracy prediction
 testData = pd.read_csv('data_test.csv')
-
+testData['classLabel'].replace({0:0,2:0,3:0},inplace=True)
 #Number to label at each iteration for active learning
 num_to_label = 10
 
@@ -45,6 +44,8 @@ testData.set_index(testData.index+unlabeledData.index[-1],inplace=True)
 
 #Generate a Document-Class label matrix (one binary column per class)
 classDummies = pd.get_dummies(temp_df.classLabel)
+if classDummies.shape[1] ==2:
+	classDummies = pd.DataFrame(classDummies[classDummies.columns[1]])
 
 #Create dictionary of binary active_learners (one for each class)
 classifiers = {}
@@ -120,11 +121,16 @@ while True:
 	#		for each classifier
 	final_preds = pd.DataFrame(columns=classDummies.columns,index=testData.index)
 	for name,classifier in classifiers.items():
-		final_preds[name] = classifier.test_results['scores'][1]
+		if len(classDummies.columns)==1:
+			final_preds = classifier.test_results['scores']
+		else:
+			final_preds[name] = classifier.test_results['scores'][1]
 
 	#Take the maximum decision value and allocate the observation to the argument class k 
 	#Print accuracy
 	accuracy =  2*(final_preds.idxmax(1)-testData.classLabel).apply(lambda x: x==0).sum()
+	print "***********************"
+	print "***********************"
 	print str(accuracy)+"% accuracy over all classes on test set"
 	print "***********************"
 	print "***********************"
@@ -141,3 +147,5 @@ while True:
 		break
 	else:
 		continue
+
+learner.gen_predictions(classifiers,unlabeledData)

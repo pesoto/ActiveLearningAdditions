@@ -483,4 +483,13 @@ After cycling through all 4 classes, it reports the overall accuracy using 4 cla
 
 The user may cycle through all classes again and start where the classifiers left off (hence the very last question). The program saves the progress of all 4 classifiers, so the user can quit at any moment and the program will pick up wherever the last accuracy was reported. These are saved in 3 files locally. The CSV file contains the labeled data already labeled, the TXT file contains information on the most recent test set predictions, and the last file contains the parameters for the Support Vector Machine for the binary model.
 
+##Final Predictions
+
+Lastly, we can create predictions for the entire unlabeled dataset with the following command.
+
+
+    learner.gen_predictions(classifiers,unlabeledData)
+
+This will generate two text files: One of all the previously labeled documents, and another csv of all the unlabeled documents accompanied by their original text. classifiers is the dictionary of all the learners (one per class), and unlabeledData is the CSV file of unlabeled documents.
+
 I hope this tutorial was useful. Please email me any feedback or questions at paul.soto@upf.edu.

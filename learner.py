@@ -24,6 +24,58 @@ import svmc
 import numpy as np
 import os
 
+def gen_predictions(learner_dict,unlabeled_datasets):
+	'''
+	Returns predictions for unlabeled data
+	'''
+	labeled_datasets = pd.DataFrame(columns=['origText','classLabel'])
+	for name,classifier in learner_dict.items():
+		df = pd.read_csv('%s_learner.csv' % classifier.className).set_index('Unnamed: 0')
+		classifier.labeled_datasets = machine_learning.ActiveLearningDataset(df,classLabel="classLabel",origText="origText")
+		unlabeled_datasets['classLabel'] = unlabeled_datasets.classLabel.replace({np.nan:0})
+		classifier.unlabeled_datasets = machine_learning.ActiveLearningDataset(unlabeled_datasets,classLabel="classLabel",origText="origText")
+		new_data = classifier.labeled_datasets.data[[classifier.labeled_datasets.origText,classifier.labeled_datasets.classLabel]]
+		new_data[new_data.columns[1]].replace({1:name},inplace=True)
+		labeled_datasets = pd.concat([labeled_datasets,new_data])
+
+	final_preds = pd.DataFrame(columns = learner_dict.keys())
+	for name,learner in learner_dict.items():
+		origData = learner.unlabeled_datasets.data[[learner.labeled_datasets.origText]]
+		point_sets = [learner.unlabeled_datasets.get_samples().values]
+		if learner.nbc:
+			ml_class = machine_learning.NaiveBayes(learner.labeled_datasets.data,1,learner.labeled_datasets.classLabel)
+			ml_class.testing = learner.test_datasets.data.drop(learner.test_datasets.origText,1)
+			ml_class.predictProbabilities('Gaussian')
+			ml_class.getPredictions()
+			scores = ml_class.testingProbs
+		elif learner.models[0].probability:
+			scores = []
+			for example_index in range(len(point_sets[0])):
+				prediction = learner.models[0].predict_probability(point_sets[0][example_index])
+				scores.append(prediction)
+		else:
+			scores = []
+			for example_index in range(len(point_sets[0])):
+				score = learner.models[0].predict_values(point_sets[0][example_index])
+				scores.append(score)
+			scores = pd.DataFrame(index=learner.unlabeled_datasets.data.index,data=scores)
+		scores.columns = [0,1]
+		if len(learner_dict.keys())==1:
+			final_preds = scores
+		else:
+			final_preds[name] = scores[1]
+		final_preds = final_preds.drop([each for each in labeled_datasets.index if each in final_preds.index])
+		origData = origData.drop([each for each in labeled_datasets.index if each in origData.index])
+	predictions = pd.DataFrame(final_preds.idxmax(1))
+	predictions['origText'] = origData[origData.columns[0]]
+	labeled_datasets.to_csv('all_labeled_data.csv')
+	predictions.to_csv('all_unlabeled_data_predictions.csv')
+
+
+
+
+
+
 def evaluate_learner(learner, include_labeled_data_in_metrics=True):
     '''
     Returns a dictionary containing various metrics for learner performance, as measured over the
@@ -59,16 +111,14 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
         ml_class.predictProbabilities('Gaussian')
         ml_class.getPredictions()
         predictions = ml_class.bestLabel
-        probs = ml_class.testingProbs
-        scores = 'The training is done using Naive Bayes'
+        scores = ml_class.testingProbs
 
     elif learner.models[0].probability:
-        probs = []
+        scores = []
         for example_index in range(len(point_sets[0])):
             prediction = learner.models[0].predict_probability(point_sets[0][example_index])
-            probs.append(prediction)
+            scores.append(prediction)
             predictions.append(prediction[0])
-        scores = 'This is a probability model'
     else:
         scores = []
         for example_index in range(len(point_sets[0])):
@@ -77,8 +127,7 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
             score = learner.models[0].predict_values(point_sets[0][example_index])
             scores.append(score)
         scores = pd.DataFrame(index=learner.test_datasets.data.index,data=scores)
-        scores.columns = [0,1]
-        probs = "This is not a probability model"
+    scores.columns = [0,1]
 
     conf_mat =  svm.evaluate_predictions(predictions, true_labels)
     # 
@@ -88,7 +137,6 @@ def evaluate_learner(learner, include_labeled_data_in_metrics=True):
     conf_mat["tn"]+= tns
     print "confusion matrix:"
     print conf_mat
-    results['probabilities'] = probs
     results['scores'] = scores
     results["confusion_matrix"] = conf_mat
     results["accuracy"] = float (conf_mat["tp"] + conf_mat["tn"]) / float(sum([conf_mat[key] for key in conf_mat.keys()]))
